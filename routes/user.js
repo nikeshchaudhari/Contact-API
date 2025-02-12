@@ -82,6 +82,7 @@ return res.status(500).json({
   email:user[0].email,
   phone:user[0].phone,
   address:user[0].address,
+  
  },'screte key 123',{
   expiresIn:'365d'
  })
@@ -91,6 +92,8 @@ res.status(200).json({
   email:user[0].email,
   phone:user[0].phone,
   address:user[0].address,
+  logoId:user[0].logoId,
+  logoUrl:user[0].logoUrl,
   token:token
 
 })
