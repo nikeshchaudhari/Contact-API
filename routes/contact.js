@@ -2,19 +2,31 @@ const express = require("express");
 const router = express.Router();
 const Contact = require("../models/Contact");
 const jwt = require('jsonwebtoken')
+const cloudinary = require('cloudinary').v2
+require('dotenv').config()
+cloudinary.config({
+  cloud_name :process.env.CLOUD,
+  api_key :process.env.API_KEY,
+  api_secret:process.env.API_SCRET
+})
 // add data in database
 router.post("/add-contact", async (req,res) => {
   try {
     const user = await jwt.verify(req.headers.authorization.split(" ")[1],'screte key 123')
     console.log(user);
+    const uploadImage = await cloudinary.uploader.upload(req.files.photo.tempFilePath)
+    console.log(uploadImage);
+    
     
     const data = await new Contact({
       fullName: req.body.fullName,
       email: req.body.email,
       phone: req.body.phone,
       address: req.body.address,
-      batch: req.body.batch,
-      uId:user._id
+      batchId: req.body.batchId,
+      uId:user._id,
+      imageUrl:uploadImage.secure_url,
+      imageId:uploadImage.public_id
     });
     const addData = await data.save();
     res.status(200).json({
@@ -55,7 +67,7 @@ router.get('/contactById/:contact',async(req,res)=>{
    const user = await jwt.verify(req.headers.authorization.split(" ")[1], 'screte key 123')
     console.log();
     
-    const data = await Contact.findById({_id:req.params.contact,uId:user._id})
+    const data = await Contact.findById({_id:req.params.contact,uId:user._id}).populate('batchId','batchName duration')
     res.status(200).json({
       Get:data
     })
@@ -70,12 +82,12 @@ router.get('/contactById/:contact',async(req,res)=>{
   }
 })
 // 
-router.get('/batchName/:batchName',async(req,res)=>{
+router.get('/batchId/:batchId',async(req,res)=>{
   try{
    const user=  await jwt.verify(req.headers.authorization.split(" ")[1],'screte key 123')
-const data = await Contact.find({batch:req.params.batchName,uId:user._id})
+const data = await Contact.find({batchId:req.params.batchIdName,uId:user._id})
 res.status(200).json({
-  Batch:data
+  batchId:data
 })
   }
   catch(err){
@@ -100,6 +112,7 @@ router.delete('/delete/:id',async(req,res)=>{
   error:"Invalid user...."
 })
 }
+await cloudinary.uploader.destroy(data[0].imageId)
 const deleteData = await Contact.findByIdAndDelete(req.params.id)
 res.status(200).json({
   delete:"deleteData"
@@ -126,17 +139,39 @@ router.put('/update/:id',async(req,res)=>{
         error:"invalid Users..."
       })
     }
-    const upDate ={
-      fullName:req.body.fullName,
-      email:req.body.email,
-      phone:req.body.phone,
-      address:req.body.address,
-    batch:req.body.batch
+    if(req.files){
+      await cloudinary.uploader.destroy(data[0].imageId)
+const uploadImage = await cloudinary.uploader.upload(req.files.photo.tempFilePath)
+
+const upDate ={
+  fullName:req.body.fullName,
+  email:req.body.email,
+  phone:req.body.phone,
+  address:req.body.address,
+batchId:req.body.batchId,
+imageUrl:uploadImage.secure_url,
+imageId:uploadImage.public_id
+}
+const updateData = await Contact.findByIdAndUpdate(req.params.id,upDate,{new:true})
+res.status(200).json({
+  Update:updateData
+})
+
     }
-    const updateData = await Contact.findByIdAndUpdate(req.params.id,upDate,{new:true})
-    res.status(200).json({
-      Update:updateData
-    })
+    else{
+      const upDate ={
+        fullName:req.body.fullName,
+        email:req.body.email,
+        phone:req.body.phone,
+        address:req.body.address,
+      batchId:req.body.batchId
+      }
+      const updateData = await Contact.findByIdAndUpdate(req.params.id,upDate,{new:true})
+      res.status(200).json({
+        UpdateDAta:updateData
+      })
+    }
+    
   }
   catch(err){
     console.log(err);
